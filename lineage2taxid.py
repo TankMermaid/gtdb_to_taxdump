@@ -9,9 +9,14 @@ import argparse
 import logging
 # 3rd party
 import networkx as nx
-from networkx.algorithms.dag import descendants
-from networkx.algorithms.lowest_common_ancestors import lowest_common_ancestor
-from networkx.algorithms.shortest_paths.unweighted import bidirectional_shortest_path
+
+# multithreading
+
+from multiprocessing import Pool
+
+# from networkx.algorithms.dag import descendants
+# from networkx.algorithms.lowest_common_ancestors import lowest_common_ancestor
+# from networkx.algorithms.shortest_paths.unweighted import bidirectional_shortest_path
 
 # logging
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.DEBUG)
@@ -94,6 +99,7 @@ def load_dmp(names_dmp_file, nodes_dmp_file):
       network.DiGraph object
     """
     regex = re.compile(r'\t\|\t')
+    regex_sci_name = re.compile(r'scientific name\t\|')
     # nodes
     logging.info('Loading file: {}'.format(names_dmp_file))
     idx = {}    # {taxid : name}
@@ -103,11 +109,14 @@ def load_dmp(names_dmp_file, nodes_dmp_file):
             if line == '':
                 continue
             line = regex.split(line)
+            if not regex_sci_name.match(line[-1]):
+                continue
+            # print(line)
             idx[int(line[0])] = line[1].lower()
     # names
     logging.info('Loading file: {}'.format(nodes_dmp_file))
     G = nx.DiGraph()
-    G.add_node(0, rank = 'root', name = 'root')
+    G.add_node(1, rank = 'root', name = 'root',prt_id = 1, prt_name = 'root')
     with open(nodes_dmp_file) as inF:
         for line in inF:
             line = line.rstrip()
@@ -120,10 +129,10 @@ def load_dmp(names_dmp_file, nodes_dmp_file):
             name_child = idx[taxid_child].lower()
             name_parent = idx[taxid_parent].lower()
             # adding node
-            G.add_node(taxid_child, rank=rank_child, name=name_child)
+            G.add_node(taxid_child, rank = rank_child, name = name_child, prt_id = taxid_parent, prt_name = name_parent)
             # adding edge
             if taxid_parent == 1:
-                G.add_edge(0, taxid_child)
+                G.add_edge(1, taxid_child)
             else:
                 G.add_edge(taxid_parent, taxid_child)
     idx.clear()
@@ -131,16 +140,25 @@ def load_dmp(names_dmp_file, nodes_dmp_file):
     logging.info('  No. of edges: {}'.format(G.number_of_edges()))
     return G
 
-def lineage2taxid(lineage, G):    
-    lineage = lineage.split(';')    
+def lineage2taxid(lineage, G):
+    lineage = lineage.split(';')
+    print(lineage)
     for cls in lineage[::-1]:
+        # print(cls)
+        if '__' in cls:
+            cls = cls.split('__')[1]
+            # print(cls)
+        else:
+            pass
         cls = cls.lower()
+        # print(cls)
         nodes = [x for x,y in G.nodes(data=True) if y['name'] == cls]
+        # print(nodes)
         if len(nodes) == 1:
-            return [nodes[0], G.nodes[nodes[0]]['rank']]
+            return [nodes[0], G.nodes[nodes[0]]['rank'], G.nodes[nodes[0]]['prt_id'], G.nodes[nodes[0]]['prt_name']]
     msg = 'Could not find a taxid for lineage: {}'
     logging.warning(msg.format(';'.join(lineage)))
-    return ['NA', 'NA']            
+    return ['NA', 'NA','NA','NA']
 
 def parse_lineage_table(table_file, lineage_column, G,
                         taxid_column, taxid_rank_column):
@@ -155,8 +173,11 @@ def parse_lineage_table(table_file, lineage_column, G,
             # header
             if i == 0:
                 header = {x:ii for ii,x in enumerate(line)}
+                # test Tank
+                print(header)
                 try:
                     _ = header[lineage_column]
+                    # print(_)
                 except KeyError:
                     msg = 'Cannot find column: {}'
                     raise KeyError(msg.format(lineage_column))
@@ -164,8 +185,16 @@ def parse_lineage_table(table_file, lineage_column, G,
                 continue
             # body
             lineage = line[header[lineage_column]]
-            taxid,rank = lineage2taxid(lineage, G)
-            print('\t'.join(line + [str(taxid), str(rank)]))
+            # print(lineage)
+
+            taxid,rank,prt_id,prt_name = lineage2taxid(lineage, G)
+            with open(file="gtdb_tax_final_formatted_isolate.tsv", mode="a+") as of:
+                of.seek(0)
+                data = of.read(100)
+                if len(data) > 0:
+                    of.write("\n")
+
+                of.write('\t'.join(line + [str(taxid), str(rank),str(prt_id),str(prt_name)]))
             # status
             if i > 0 and (i+1) % 100 == 0:
                 logging.info('  Records processed: {}'.format(i+1))

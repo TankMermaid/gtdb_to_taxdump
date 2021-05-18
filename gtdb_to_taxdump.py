@@ -87,6 +87,7 @@ class Graph(object):
         """
         if vertex not in self.__graph_dict:
             self.__graph_dict[vertex] = []
+            #node id increment methods
             self.__graph_nodeIDs[vertex] = len(self.__graph_nodeIDs.keys())+1
 
     def add_edge(self, vertex1, vertex2):
@@ -281,13 +282,29 @@ def load_gtdb_tax(infile, graph):
         if line == '':
             continue
         line = line.split('\t')
+        ## debug line
+        print(line)
+        ## debug line
         if len(line) < 2:
             msg = 'Line{} does not contain >=2 columns'
             raise ValueError(msg.format(i))            
         tax = line[1].split(';')
+        ## debug
+        print(tax)
+        ## debug
         if len(tax) < 7:
             msg = 'WARNING: Line{}: taxonomy length is <7'
             logging.info(msg.format(i))
+
+        # new_tax = []
+
+        for i,t in enumerate(tax):
+            tsp = t.split('__')
+            print(tsp)
+            if tsp[1] == '':
+                tax[i] = tax[i]+line[0]
+            
+
         tax.append(line[0])
         # adding taxonomy to graph
         for ii,cls in enumerate(tax):
