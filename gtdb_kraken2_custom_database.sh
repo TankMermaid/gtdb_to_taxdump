@@ -162,13 +162,20 @@ time memusg parallel -j 6 \
             "grep '^C'  kraken2/kraken2_reads/{1}_output_bacteria_mag_gtdb_v2 | cut -f 2 | sort > kraken2/kraken2_reads/check_diff_custom_std/{1}_mag" \
             ::: `cat metadata_id`
 
-time memusg parallel -j 6 \
+time memusg parallel -j 48 \
             "grep '^C'  kraken2/kraken2_reads/{1}_output_bacteria_cf_all_reads | cut -f 2 | sort > kraken2/kraken2_reads/check_diff_custom_std/{1}_std" \
             ::: `cat metadata_id`
 
+
+# list the comm total summary of A unique B unique and intersection of A && B
 time memusg parallel -j 48 \
-            "comm   kraken2/kraken2_reads/check_diff_custom_std/{1}_mag kraken2/kraken2_reads/check_diff_custom_std/{}_std | wc -l" \
+            "comm  --total kraken2/kraken2_reads/check_diff_custom_std/{1}_mag kraken2/kraken2_reads/check_diff_custom_std/{}_std | grep 'total'| sed 's/total/{}/g' > kraken2/kraken2_reads/check_diff_custom_std/{}_mag_std_comm.sum" \
             ::: `cat metadata_id`
+
+# concat all the samples (concatenate adj of concat) with adding header
+#  -e     enable interpretation of backslash escapes
+echo -e "MAG_Uniq\tSTD_Uniq\tInterSection\tSampleID" | cat - kraken2/kraken2_reads/check_diff_custom_std/*.sum > kraken2/kraken2_reads/check_diff_custom_std/mag_std_intsec.summry
+
 
 # datamash transpose mapingfile_212 convenient for r plot
 cut -d ' ' -f 1,2 result/a_final_kraken_mag_itegr_custom_3group_v1.tsv |sort -k1 |sed -i 's/ /\t/g'|datamash transpose >seq_depth
@@ -177,3 +184,6 @@ cut -d ' ' -f 1,2 result/a_final_kraken_mag_itegr_custom_3group_v1.tsv |sort -k1
 sed  's/-/./g' taxonomy_count_bacteria_gtdb_itegrt_v1.txt >taxonomy_count_bacteria_gtdb_itegrt_v1_hypen2dot.txt
 
 ../../gtdb_to_taxdump/tax_rank_abundance_parse.py taxonomy_count_bacteria_gtdb_itegrt_v1_hypen2dot.txt -r 1 2 3 4 5 6 7 -o ./
+
+#  
+../../gtdb_to_taxdump/tax_rank_abundance_parse.py taxonomy_count_bacteria_cf_all_reads.txt  -r 1 2 3 4 5 6 7 -o ncbi_tax

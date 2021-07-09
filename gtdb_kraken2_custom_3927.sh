@@ -39,16 +39,16 @@
 
 ## step 0 gtdb tax file and seq preprocessing
 
-ln -s /mnt/m1/yongxin/rice/MAG/genome/all/temp/drep/0.95/dereplicated_genomes/ integrt_all_genome
-cp  /mnt/m1/yongxin/rice/MAG/genome/all/result/itol/tax.txt integrt_all_genome.tax.tsv
+ln -s /mnt/m1/yongxin/rice/MAG/genome/IsolateMAG/temp/drep/0.95/dereplicated_genomes/ integrt_all_genome
+cp  /mnt/m1/yongxin/rice/MAG/genome/IsolateMAG/result/gtdbtk/0.95/tax_ar.txt integrt_all_genome.tax.tsv
 
 cut -f 1 integrt_all_genome.tax.tsv | paste -  <(cut --complement -f 1 integrt_all_genome.tax.tsv | sed 's/\t/;/g' ) >isolate_tsb_tax_fmt.tsv
 # cut -f 1,2 integrt_all_genome.tax.tsv  >isolate_tsb_tax_fmt.tsv
 
 ## step 1 concact the metadata without the header 
 ## metadata format: Genomeaccession\t d__B...;p__F...;...;s__B... at least 2 columns are mandetory
-
-awk '(NR>1)' isolate_tsb_tax_fmt.tsv | cat - <(awk '(NR>1)' /mnt/m1/yongxin/rice/MAG/genome/all/temp/gtdbtk/g.ar122.summary.tsv | cut -f 1,2) > integrate_metadata_tax.tsv
+# awk '(NR>1)' isolate_tsb_tax_fmt.tsv | cat - <(awk '(NR>1)' /mnt/m1/yongxin/rice/MAG/genome/all/temp/gtdbtk/g.ar122.summary.tsv | cut -f 1,2) > integrate_metadata_tax.tsv
+awk 'NR>1' isolate_tsb_tax_fmt.tsv > integrate_metadata_tax.tsv
 ## check number of genomes
 wc -l integrate_metadata_tax.tsv
 ## 1204 ok adding archeae
@@ -91,6 +91,7 @@ parallel  -j 36 \
 #           'sed "/>/ c\>{1}|kraken:taxid|{2}" isolate_tsb_genome/{1}.fna >seq_gtdb_itegrt_v1/{1}_pseudoTaxID.fa' \
 #           ::: `awk 'NR==FNR{a[$1]; next} ($2 in a){print }' <(cut -f 1 isolate_tsb_tax_fmt_no_header.tsv) <(cat integrate_taxid_generate_mapping) |cut -f 2`\
 #           ::: `awk 'NR==FNR{a[$1]; next} ($2 in a){print }' <(cut -f 1 isolate_tsb_tax_fmt_no_header.tsv) <(cat integrate_taxid_generate_mapping) |cut -f 1`
+
 
 
  
