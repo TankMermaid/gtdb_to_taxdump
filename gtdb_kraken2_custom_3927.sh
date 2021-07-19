@@ -38,19 +38,19 @@
 ## for example integrate mag and isolate tsb
 
 ## step 0 gtdb tax file and seq preprocessing
+# hard link not allowed for directory
+ln -s /mnt/m1/yongxin/rice/MAG/genome/IsolateMAG/temp/antismash/	integrt_all_genome_3976
+cp  /mnt/m1/yongxin/rice/MAG/genome/IsolateMAG/result/gtdbtk/tax.txt integrt_all_genome_3976.tax.tsv
 
-ln -s /mnt/m1/yongxin/rice/MAG/genome/IsolateMAG/temp/drep/0.95/dereplicated_genomes/ integrt_all_genome
-cp  /mnt/m1/yongxin/rice/MAG/genome/IsolateMAG/result/gtdbtk/0.95/tax_ar.txt integrt_all_genome.tax.tsv
-
-cut -f 1 integrt_all_genome.tax.tsv | paste -  <(cut --complement -f 1 integrt_all_genome.tax.tsv | sed 's/\t/;/g' ) >isolate_tsb_tax_fmt.tsv
+cut -f 1 integrt_all_genome_3976.tax.tsv | paste -  <(cut --complement -f 1 integrt_all_genome_3976.tax.tsv | sed 's/\t/;/g' ) >isolate_tsb_tax_fmt_3976.tsv
 # cut -f 1,2 integrt_all_genome.tax.tsv  >isolate_tsb_tax_fmt.tsv
 
 ## step 1 concact the metadata without the header 
 ## metadata format: Genomeaccession\t d__B...;p__F...;...;s__B... at least 2 columns are mandetory
 # awk '(NR>1)' isolate_tsb_tax_fmt.tsv | cat - <(awk '(NR>1)' /mnt/m1/yongxin/rice/MAG/genome/all/temp/gtdbtk/g.ar122.summary.tsv | cut -f 1,2) > integrate_metadata_tax.tsv
-awk 'NR>1' isolate_tsb_tax_fmt.tsv > integrate_metadata_tax.tsv
+awk 'NR>1' isolate_tsb_tax_fmt_3976.tsv > integrate_metadata_tax_3976.tsv
 ## check number of genomes
-wc -l integrate_metadata_tax.tsv
+wc -l integrate_metadata_tax_3976.tsv
 ## 1204 ok adding archeae
 
 
@@ -58,10 +58,10 @@ wc -l integrate_metadata_tax.tsv
 # cat isolate_tsb_tax_fmt_no_header.tsv mag_gtdb_tax_formatted_no_header.tsv >integrate_metadata_tax.tsv
 
 ## step 2 generate ncbi *.dmp and pseudo id(order cannot be confirm each round)
-./gtdb_to_taxdump.py integrate_metadata_tax.tsv >log_integrate
+./gtdb_to_taxdump.py integrate_metadata_tax_3976.tsv >log_integrate_3976
 
 ## extract mapping file mapped id to genomeaccession 
-grep subspecies log_integrate > integrate_taxid_generate_mapping
+grep subspecies log_integrate_3976 > integrate_taxid_generate_mapping_3976
 
 
  ## step 3 new library to build, may there be warning for part of file due to the whole mapping metadata 
@@ -72,13 +72,13 @@ grep subspecies log_integrate > integrate_taxid_generate_mapping
 #           'sed "/>/ c\>{1}|kraken:taxid|{2}" mag_genome/{1}.fa >seq_gtdb_itegrt_v1/{1}_pseudoTaxID.fa' \
 #           ::: `awk 'NR==FNR{a[$1]; next} ($2 in a){print }' <(cut -f 1 mag_gtdb_tax_formatted_no_header.tsv) <(cat integrate_taxid_generate_mapping) |cut -f 2`\
 #           ::: `awk 'NR==FNR{a[$1]; next} ($2 in a){print }' <(cut -f 1 mag_gtdb_tax_formatted_no_header.tsv) <(cat integrate_taxid_generate_mapping) |cut -f 1`
-mkdir seq_gtdb_itegrt_v2
+mkdir seq_gtdb_itegrt_v3
 export LC_ALL='C'
 parallel  -j 36 \
           --xapply \
-          'sed "/>/ c\>{1}|kraken:taxid|{2}" integrt_all_genome/{1}.fna >seq_gtdb_itegrt_v2/{1}_pseudoTaxID.fa' \
-          ::: `awk 'NR==FNR{a[$1]; next} ($2 in a){print }' <(cut -f 1 integrate_metadata_tax.tsv) <(cat integrate_taxid_generate_mapping) |cut -f 2`\
-          ::: `awk 'NR==FNR{a[$1]; next} ($2 in a){print }' <(cut -f 1 integrate_metadata_tax.tsv) <(cat integrate_taxid_generate_mapping) |cut -f 1`
+          'sed "/>/ c\>{1}|kraken:taxid|{2}" integrt_all_genome_3976/{1}.fna >seq_gtdb_itegrt_v3/{1}_pseudoTaxID.fa' \
+          ::: `awk 'NR==FNR{a[$1]; next} ($2 in a){print }' <(cut -f 1 integrate_metadata_tax_3976.tsv) <(cat integrate_taxid_generate_mapping_3976) |cut -f 2`\
+          ::: `awk 'NR==FNR{a[$1]; next} ($2 in a){print }' <(cut -f 1 integrate_metadata_tax_3976.tsv) <(cat integrate_taxid_generate_mapping_3976) |cut -f 1`
 
 
 ## warning .fa and .fna
@@ -96,21 +96,21 @@ parallel  -j 36 \
 
  
 ## step 4 adding-library format or library-in-all-one format
-mkdir ../bacteria_gtdb_itegrt_all_v1
-parallel -j 36 'kraken2-build --add-to-library seq_gtdb_itegrt_v2/{}_pseudoTaxID.fa --db ../bacteria_gtdb_itegrt_all_v1' \
-                ::: `cut -f 2 integrate_taxid_generate_mapping`
+mkdir ../bacteria_gtdb_itegrt_all_v3
+parallel -j 36 'kraken2-build --add-to-library seq_gtdb_itegrt_v3/{}_pseudoTaxID.fa --db ../bacteria_gtdb_itegrt_all_v3' \
+                ::: `cut -f 2 integrate_taxid_generate_mapping_3976`
 
 
 ## step5 prepare *.dmp file 
-mkdir -p ../bacteria_gtdb_itegrt_all_v1/taxonomy ../bacteria_gtdb_itegrt_all_v1/library
-cp nodes.dmp names.dmp ../bacteria_gtdb_itegrt_all_v1/taxonomy/
+mkdir -p ../bacteria_gtdb_itegrt_all_v3/taxonomy ../bacteria_gtdb_itegrt_all_v3/library
+cp nodes.dmp names.dmp ../bacteria_gtdb_itegrt_all_v3/taxonomy/
 
 
 
 ## kraken2 build with CHT method(25min)
 kraken2-build --build \
               --threads 48 \
-              --db ../bacteria_gtdb_itegrt_all_v1
+              --db ../bacteria_gtdb_itegrt_all_v3
 
 
 bash kraken2_custom_classify_gtdb_itegrt_v1.sh /mnt/m3/liufang/Rice_NRgene/01_host_remove_raw/kneaddata_output &
